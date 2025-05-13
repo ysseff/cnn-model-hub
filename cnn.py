@@ -58,10 +58,18 @@ class AddLayerDialog(QDialog):
 
         layer_type = self.layer_type_combo.currentText()
         if layer_type == "Input":
-            self.add_param("Width", "128")
-            self.add_param("Height", "128")
+            width_field = QLineEdit("128")
+            width_field.setDisabled(True)
+            height_field = QLineEdit("128")
+            height_field.setDisabled(True)
+            self.param_fields["Width"] = width_field
+            self.param_fields["Height"] = height_field
+
             channels = "3" if self.image_type == "RGB" else "1"
             self.param_fields["Channels"] = QLabel(channels)
+
+            self.param_form.addRow("Width:", width_field)
+            self.param_form.addRow("Height:", height_field)
             self.param_form.addRow("Channels:", self.param_fields["Channels"])
         elif layer_type == "Conv2D":
             self.add_param("Filters", "32")
@@ -121,10 +129,13 @@ class CreateModelDialog(QDialog):
         layer_layout.addLayout(btn_row)
         remove_layer_btn = QPushButton("Remove Selected Layer")
         remove_layer_btn.clicked.connect(self.remove_selected_layer)
+        edit_layer_btn = QPushButton("Edit Selected Layer")
+        edit_layer_btn.clicked.connect(self.edit_selected_layer)
 
         btn_row.addWidget(add_layer_btn)
         btn_row.addWidget(default_model_btn)
         btn_row.addWidget(remove_layer_btn)
+        btn_row.addWidget(edit_layer_btn)
 
         layer_group.setLayout(layer_layout)
         main_layout.addWidget(layer_group)
@@ -183,6 +194,36 @@ class CreateModelDialog(QDialog):
         for item in selected_items:
             row = self.layer_list.row(item)
             self.layer_list.takeItem(row)
+
+    def edit_selected_layer(self):
+        selected_items = self.layer_list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select a layer to edit.")
+            return
+
+        item = selected_items[0]
+        text = item.text()
+        layer_type, params_str = text.split(":", 1)
+        params = {}
+        for p in params_str.strip().split(','):
+            if '=' in p:
+                key, value = p.strip().split('=')
+                params[key.strip()] = value.strip()
+
+        # Open AddLayerDialog pre-filled with current params
+        dialog = AddLayerDialog(self.get_image_type(), self)
+        dialog.layer_type_combo.setCurrentText(layer_type.strip())
+        dialog.update_form_fields()
+
+        # Pre-fill param fields with existing values
+        for key, field in dialog.param_fields.items():
+            if key in params and isinstance(field, QLineEdit):
+                field.setText(params[key])
+
+        if dialog.exec_() == QDialog.Accepted:
+            new_layer_type, new_params = dialog.selected_layer_info
+            new_desc = f"{new_layer_type}: " + ', '.join(f"{k}={v}" for k, v in new_params.items())
+            item.setText(new_desc)
 
     def create_model(self):
         layers = [self.layer_list.item(i).text() for i in range(self.layer_list.count())]
