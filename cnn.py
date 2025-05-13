@@ -12,7 +12,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from keras.src.legacy.preprocessing.image import ImageDataGenerator
 
-# ------------------ Layer Dialogs (no change from yours) ------------------
+# ------------------ Layer Dialogs ------------------
 
 class AddLayerDialog(QDialog):
     def __init__(self, image_type, parent=None):
@@ -344,7 +344,6 @@ class CNNModelHub(QMainWindow):
         if file_name:
             self.model = tf.keras.models.load_model(file_name)
             QMessageBox.information(self, "Model Loaded", f"Loaded model: {os.path.basename(file_name)}")
-            self.validate_model()
 
     # ------------------ Training, Validation, Classification ------------------
 
@@ -442,8 +441,9 @@ class CNNModelHub(QMainWindow):
 
             prediction = self.model.predict(img_array)
             if self.model.output_shape[-1] == 1:
-                confidence = prediction[0][0]
-                class_idx = int(confidence > 0.5)
+                raw_confidence = prediction[0][0]
+                class_idx = int(raw_confidence > 0.5)
+                confidence = raw_confidence if class_idx == 1 else 1 - raw_confidence
             else:
                 confidence = tf.reduce_max(prediction[0]).numpy()
                 class_idx = tf.argmax(prediction[0]).numpy()
@@ -483,7 +483,6 @@ class CNNModelHub(QMainWindow):
 
         layout.addWidget(train_btn)
         layout.addWidget(validate_btn)
-        layout.addWidget(QProgressBar())
         layout.addWidget(classify_btn)
 
         panel.setLayout(layout)
