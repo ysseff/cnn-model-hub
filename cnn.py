@@ -11,6 +11,7 @@ from PyQt5.QtGui import QPixmap
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from keras.src.legacy.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 # ------------------ Layer Dialogs ------------------
 
@@ -422,8 +423,17 @@ class CNNModelHub(QMainWindow):
             QMessageBox.warning(self, "Invalid Epochs", "Please enter a valid number of epochs.")
             return
 
-        history = self.model.fit(train_gen, epochs=epochs, validation_data=val_gen)
-        self.model.save('trained_model.keras')
+        checkpoint_callback = ModelCheckpoint(
+            'best.keras',
+            monitor='val_accuracy',
+            save_best_only=True,
+            mode='max',
+            verbose=1,
+            save_weights_only=False
+        )
+
+        history = self.model.fit(train_gen, epochs=epochs, validation_data=val_gen, callbacks=[checkpoint_callback])
+        self.model.save('best.keras')
         # Visualization update
         history_dict = history.history
 
